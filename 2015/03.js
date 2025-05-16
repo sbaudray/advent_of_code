@@ -1,8 +1,7 @@
-const readline = require("node:readline");
 const fs = require("node:fs");
 const path = require("node:path");
 const { pipeline } = require("node:stream/promises");
-const { Writable, Transform } = require("node:stream");
+const { Writable } = require("node:stream");
 
 // Santa is delivering presents to an infinite two-dimensional grid of houses.
 
@@ -22,63 +21,108 @@ const { Writable, Transform } = require("node:stream");
 // his starting/ending location.
 // ^v^v^v^v^v delivers a bunch of presents to some very lucky children at only 2 houses.
 
-async function part1() {
-  const DirectionsStream = fs.createReadStream(
-    path.join(__dirname, "./03.input.txt"),
-    { highWaterMark: 1 }
-  );
+function DirectionsStream() {
+  return fs.createReadStream(path.join(__dirname, "./03.input.txt"), {
+    highWaterMark: 1,
+    encoding: "utf8",
+  });
+}
 
-  function ToStringTransformerStream() {
-    return new Transform({
-      objectMode: true,
-      transform(buffer, _, done) {
-        done(null, buffer.toString());
-      },
-    });
+const serializePosition = ({ x, y }) => `${x}:${y}`;
+
+function move(direction, position) {
+  switch (direction) {
+    case "v":
+      position.y -= 1;
+      break;
+    case "^":
+      position.y += 1;
+      break;
+    case "<":
+      position.x -= 1;
+      break;
+    case ">":
+      position.x += 1;
+      break;
   }
+}
 
+async function part1() {
   function HousesVisitedComputerStream() {
     let santaPosition = { x: 0, y: 0 };
 
-    const formatPosition = ({ x, y }) => `${x}:${y}`;
+    const housesVisited = new Set();
 
-    const housesVisitedBySanta = new Set();
-
-    housesVisitedBySanta.add(formatPosition(santaPosition));
+    housesVisited.add(serializePosition(santaPosition));
 
     return new Writable({
       objectMode: true,
       write(direction, _, done) {
-        switch (direction) {
-          case "v":
-            santaPosition.y -= 1;
-            break;
-          case "^":
-            santaPosition.y += 1;
-            break;
-          case "<":
-            santaPosition.x -= 1;
-            break;
-          case ">":
-            santaPosition.x += 1;
-            break;
-        }
-
-        housesVisitedBySanta.add(formatPosition(santaPosition));
+        move(direction, santaPosition);
+        housesVisited.add(serializePosition(santaPosition));
         done();
       },
       final(done) {
-        console.log({ housesVisitedBySanta: housesVisitedBySanta.size });
+        console.log({ housesVisitedBySanta: housesVisited.size });
         done();
       },
     });
   }
 
-  await pipeline(
-    DirectionsStream,
-    ToStringTransformerStream(),
-    HousesVisitedComputerStream()
-  );
+  await pipeline(DirectionsStream(), HousesVisitedComputerStream());
+}
+
+// The next year, to speed up the process, Santa creates a robot version of himself,
+// Robo-Santa, to deliver presents with him.
+
+// Santa and Robo-Santa start at the same location (delivering two presents to the same starting house),
+// then take turns moving based on instructions from the elf, who is eggnoggedly reading from
+// the same script as the previous year.
+
+// This year, how many houses receive at least one present?
+
+// For example:
+
+// v^ delivers presents to 3 houses, because Santa goes north, and then Robo-Santa goes south.
+// ^>v< now delivers presents to 3 houses, and Santa and Robo-Santa end up back where they started.
+// ^v^v^v^v^v now delivers presents to 11 houses, with Santa going one direction and
+// Robo-Santa going the other.
+
+async function part2() {
+  function HousesVisitedComputerStream() {
+    let turn = 0;
+
+    let santaPosition = { x: 0, y: 0 };
+    let santaRobotPosition = { x: 0, y: 0 };
+
+    let housesVisited = new Set();
+
+    housesVisited.add(serializePosition(santaPosition));
+
+    return new Writable({
+      objectMode: true,
+      write(direction, _, done) {
+        if (turn === 0) {
+          move(direction, santaPosition);
+          housesVisited.add(serializePosition(santaPosition));
+          turn = 1;
+        } else if (turn === 1) {
+          move(direction, santaRobotPosition);
+          housesVisited.add(serializePosition(santaRobotPosition));
+          turn = 0;
+        }
+
+        done();
+      },
+      final(done) {
+        console.log({ housesVisitedBySantaAndHisRobot: housesVisited.size });
+        done();
+      },
+    });
+  }
+
+  await pipeline(DirectionsStream(), HousesVisitedComputerStream());
 }
 
 part1().catch(console.error);
+part2().catch(console.error);
