@@ -16,8 +16,13 @@ const crypto = require("node:crypto");
 // If your secret key is pqrstuv, the lowest number it combines with to make an MD5 hash starting
 // with five zeroes is 1048970; that is, the MD5 hash of pqrstuv1048970 looks like 000006136ef....
 
-function part1() {
+// --- Part Two ---
+// Now find one that starts with six zeroes.
+
+function main() {
   let suffix = 1;
+  let partOneDone = 0;
+  let partTwoDone = 0;
 
   function* hasher() {
     while (true) {
@@ -33,10 +38,20 @@ function part1() {
   }
 
   for (const hash of hasher()) {
-    if (hash.startsWith("00000")) {
-      return suffix;
+    if (!partOneDone && hash.startsWith("00000")) {
+      partOneDone = 1;
+      console.log({ part1: suffix });
+    }
+
+    if (!partTwoDone && hash.startsWith("000000")) {
+      partTwoDone = 1;
+      console.log({ part2: suffix });
+    }
+
+    if (partOneDone && partTwoDone) {
+      break;
     }
   }
 }
 
-console.log(part1());
+main();
