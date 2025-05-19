@@ -1,8 +1,12 @@
-const fs = require("node:fs");
-const path = require("node:path");
-const { Writable } = require("node:stream");
-const { pipeline } = require("node:stream/promises");
-const readline = require("readline");
+import fs from "node:fs";
+import path, { dirname } from "node:path";
+import { Writable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import readline from "readline";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Santa needs help figuring out which strings in his text file are naughty or nice.
 
@@ -24,6 +28,30 @@ const readline = require("readline");
 // haegwjzuvuyypxyu is naughty because it contains the string xy.
 // dvszwmarrgswjxmb is naughty because it contains only one vowel.
 // How many strings are nice?
+function StringsStream() {
+  return readline.createInterface({
+    input: fs.createReadStream(path.join(__dirname, "./05.input.txt")),
+  });
+}
+
+function PredicateCounterStream({ predicate, label }) {
+  let count = 0;
+
+  return new Writable({
+    objectMode: true,
+    write(str, _, done) {
+      if (predicate(str)) {
+        count += 1;
+      }
+
+      done();
+    },
+    final(done) {
+      console.log({ [label]: count });
+      done();
+    },
+  });
+}
 
 async function part1() {
   function isNiceString(str) {
@@ -34,32 +62,42 @@ async function part1() {
     );
   }
 
-  function StringsStream() {
-    return readline.createInterface({
-      input: fs.createReadStream(path.join(__dirname, "./05.input.txt")),
-    });
-  }
+  await pipeline(
+    StringsStream(),
+    PredicateCounterStream({ label: "part1", predicate: isNiceString })
+  );
+}
 
-  function NiceStringsComputerStream() {
-    let niceStrings = 0;
+// Realizing the error of his ways, Santa has switched to a better model of determining
+// whether a string is naughty or nice. None of the old rules apply, as they are all clearly ridiculous.
 
-    return new Writable({
-      objectMode: true,
-      write(str, _, done) {
-        if (isNiceString(str)) {
-          niceStrings += 1;
-        }
+// Now, a nice string is one with all of the following properties:
 
-        done();
-      },
-      final(done) {
-        console.log({ niceStrings });
-        done();
-      },
-    });
-  }
+// It contains a pair of any two letters that appears at least twice in the string without overlapping,
+// like xyxy (xy) or aabcdefgaa (aa), but not like aaa (aa, but it overlaps).
+// It contains at least one letter which repeats with exactly one letter between them,
+// like xyx, abcdefeghi (efe), or even aaa.
+// For example:
 
-  await pipeline(StringsStream(), NiceStringsComputerStream());
+// qjhvhtzxzqqjkmpb is nice because is has a pair that appears twice (qj) and a
+// letter that repeats with exactly one letter between them (zxz).
+// xxyxx is nice because it has a pair that appears twice and a letter that repeats with
+// one between, even though the letters used by each rule overlap.
+// uurcxstgmygtbstg is naughty because it has a pair (tg) but no repeat with a single letter between them.
+// ieodomkazucvgmuy is naughty because it has a repeating letter with one between (odo), but
+// no pair that appears twice.
+// How many strings are nice under these new rules?
+
+export function isNiceStringPart2(str) {
+  return /([a-z][a-z]).*\1/g.test(str) && /([a-z])[a-z]\1/.test(str);
+}
+
+async function part2() {
+  await pipeline(
+    StringsStream(),
+    PredicateCounterStream({ label: "part2", predicate: isNiceStringPart2 })
+  );
 }
 
 part1().catch(console.error);
+part2().catch(console.error);
