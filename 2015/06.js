@@ -3,7 +3,7 @@ import fs from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import path, { dirname } from "node:path";
 import { pipeline } from "node:stream/promises";
-import { Writable } from "node:stream";
+import { Transform, Writable } from "node:stream";
 
 const filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(filename);
@@ -43,30 +43,7 @@ function parseInstruction(instructionString) {
   };
 }
 
-function playInstruction(instruction, grid) {
-  const { startX, startY, endX, endY, command } = instruction;
-
-  for (let i = startX; i <= endX; i += 1) {
-    for (let j = startY; j <= endY; j += 1) {
-      switch (command) {
-        case "turn on":
-          grid[i][j] = 1;
-          break;
-        case "turn off":
-          grid[i][j] = 0;
-          break;
-        case "toggle":
-          // toggle with bitwise XOR
-          grid[i][j] = grid[i][j] ^ 1;
-          break;
-        default:
-          throw new Error(JSON.stringify(instruction));
-      }
-    }
-  }
-}
-
-function countLightsOn(grid) {
+function countLightIntensity(grid) {
   let count = 0;
   grid.forEach((row) => {
     row.forEach((light) => {
@@ -76,24 +53,94 @@ function countLightsOn(grid) {
   return count;
 }
 
+function InstructionParserStream() {
+  return new Transform({
+    objectMode: true,
+    transform(instructionString, _, done) {
+      done(null, parseInstruction(instructionString));
+    },
+  });
+}
+
+function InstructionRunnerStream(run) {
+  return new Writable({
+    objectMode: true,
+    write(instruction, _, done) {
+      run(instruction);
+
+      done();
+    },
+  });
+}
+
 async function part1() {
   let grid = lightGrid();
 
-  function AllOfTheLightsStream() {
-    return new Writable({
-      objectMode: true,
-      write(instructionString, _, done) {
-        const instruction = parseInstruction(instructionString);
-        playInstruction(instruction, grid);
+  function run(instruction) {
+    const { startX, startY, endX, endY, command } = instruction;
 
-        done();
-      },
-    });
+    for (let i = startX; i <= endX; i += 1) {
+      for (let j = startY; j <= endY; j += 1) {
+        switch (command) {
+          case "turn on":
+            grid[i][j] = 1;
+            break;
+          case "turn off":
+            grid[i][j] = 0;
+            break;
+          case "toggle":
+            // toggle with bitwise XOR
+            grid[i][j] = grid[i][j] ^ 1;
+            break;
+          default:
+            throw new Error(JSON.stringify(instruction));
+        }
+      }
+    }
   }
 
-  await pipeline(InstructionsStream(), AllOfTheLightsStream());
+  await pipeline(
+    InstructionsStream(),
+    InstructionParserStream(),
+    InstructionRunnerStream(run)
+  );
 
-  console.log(countLightsOn(grid));
+  console.log({ part1: countLightIntensity(grid) });
+}
+
+async function part2() {
+  let grid = lightGrid();
+
+  function run(instruction) {
+    const { startX, startY, endX, endY, command } = instruction;
+
+    for (let i = startX; i <= endX; i += 1) {
+      for (let j = startY; j <= endY; j += 1) {
+        switch (command) {
+          case "turn on":
+            grid[i][j] = grid[i][j] + 1;
+            break;
+          case "turn off":
+            grid[i][j] = Math.max(0, grid[i][j] - 1);
+            break;
+          case "toggle":
+            grid[i][j] = grid[i][j] + 2;
+            break;
+          default:
+            throw new Error(JSON.stringify(instruction));
+        }
+      }
+    }
+  }
+
+  await pipeline(
+    InstructionsStream(),
+    InstructionParserStream(),
+    InstructionRunnerStream(run)
+  );
+
+  console.log({ part2: countLightIntensity(grid) });
 }
 
 part1().catch(console.error);
+part2().catch(console.error);
