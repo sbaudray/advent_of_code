@@ -49,80 +49,79 @@ function CollectorStream({ collection }) {
   });
 }
 
-async function part1() {
-  let signals = {};
-  let instructions = [];
+function run(instruction, signals, { ignoreWireB } = {}) {
+  const { value1, value2, wire1, wire2, destination, gate } = instruction;
 
-  function run(instruction) {
-    const { value1, value2, wire1, wire2, destination, gate } = instruction;
-
-    const signal1 = signals[wire1] ?? value1;
-    const signal2 = signals[wire2] ?? value2;
-
-    switch (gate) {
-      case "NOT": {
-        if (signal2 === undefined) {
-          return false;
-        }
-
-        signals[destination] = 2 ** 16 + ~signal2;
-        return true;
-      }
-      case "AND": {
-        if (signal1 === undefined || signal2 === undefined) {
-          return false;
-        }
-
-        signals[destination] = signal1 & signal2;
-
-        return true;
-      }
-      case "OR": {
-        if (signal1 === undefined || signal2 === undefined) {
-          return false;
-        }
-
-        signals[destination] = signal1 | signal2;
-
-        return true;
-      }
-      case "LSHIFT": {
-        if (signal1 === undefined) {
-          return false;
-        }
-
-        signals[destination] = signal1 << signal2;
-
-        return true;
-      }
-      case "RSHIFT": {
-        if (signal1 === undefined || signal2 === undefined) {
-          return false;
-        }
-
-        signals[destination] = signal1 >>> signal2;
-
-        return true;
-      }
-      case "ASSIGN": {
-        if (signal1 === undefined) {
-          return false;
-        }
-
-        signals[destination] = signal1;
-        return true;
-      }
-      default:
-        throw new Error(JSON.stringify(instruction));
-    }
+  if (ignoreWireB && destination === "b") {
+    return true;
   }
 
-  await pipeline(
-    InstructionsStream(),
-    InstructionParserStream(),
-    CollectorStream({ collection: instructions })
-  );
+  const signal1 = signals[wire1] ?? value1;
+  const signal2 = signals[wire2] ?? value2;
 
+  switch (gate) {
+    case "NOT": {
+      if (signal2 === undefined) {
+        return false;
+      }
+
+      signals[destination] = 2 ** 16 + ~signal2;
+      return true;
+    }
+    case "AND": {
+      if (signal1 === undefined || signal2 === undefined) {
+        return false;
+      }
+
+      signals[destination] = signal1 & signal2;
+
+      return true;
+    }
+    case "OR": {
+      if (signal1 === undefined || signal2 === undefined) {
+        return false;
+      }
+
+      signals[destination] = signal1 | signal2;
+
+      return true;
+    }
+    case "LSHIFT": {
+      if (signal1 === undefined) {
+        return false;
+      }
+
+      signals[destination] = signal1 << signal2;
+
+      return true;
+    }
+    case "RSHIFT": {
+      if (signal1 === undefined || signal2 === undefined) {
+        return false;
+      }
+
+      signals[destination] = signal1 >>> signal2;
+
+      return true;
+    }
+    case "ASSIGN": {
+      if (signal1 === undefined) {
+        return false;
+      }
+
+      signals[destination] = signal1;
+      return true;
+    }
+    default:
+      throw new Error(JSON.stringify(instruction));
+  }
+}
+
+function runInstructionsUntilAllSignalsAssigned(
+  instructions,
+  signals,
+  options
+) {
   let unrun = [];
 
   while (instructions.length > 0) {
@@ -131,7 +130,7 @@ async function part1() {
     for (let i = 0; i < runs; i += 1) {
       const instruction = instructions.shift();
 
-      const result = run(instruction);
+      const result = run(instruction, signals, options);
 
       if (!result) {
         unrun.push(instruction);
@@ -141,8 +140,45 @@ async function part1() {
     instructions = unrun;
     unrun = [];
   }
-
-  console.log({ part1: signals["a"] });
 }
 
-part1().catch(console.error);
+async function part1() {
+  let signals = {};
+  let instructions = [];
+
+  await pipeline(
+    InstructionsStream(),
+    InstructionParserStream(),
+    CollectorStream({ collection: instructions })
+  );
+
+  runInstructionsUntilAllSignalsAssigned(instructions, signals);
+
+  return signals.a;
+}
+
+const part1Result = await part1().catch(console.error);
+
+async function part2(part1Result) {
+  const signals = { b: part1Result };
+  let instructions = [];
+
+  await pipeline(
+    InstructionsStream(),
+    InstructionParserStream(),
+    CollectorStream({ collection: instructions })
+  );
+
+  runInstructionsUntilAllSignalsAssigned(instructions, signals, {
+    ignoreWireB: true,
+  });
+
+  console.log(instructions.length);
+
+  return signals.a;
+}
+
+const part2Result = await part2(part1Result);
+
+console.log({ part1: part1Result });
+console.log({ part2: part2Result });
