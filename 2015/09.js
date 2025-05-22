@@ -65,7 +65,6 @@ function travel({
 
     travel({
       from: to,
-      distance,
       visited,
       map,
       distances,
@@ -98,4 +97,17 @@ function part1() {
   return Math.min.apply(null, distances);
 }
 
+function part2() {
+  const map = buildMap(travels);
+
+  let distances = [];
+
+  for (const city of map.keys()) {
+    travel({ from: city, map, distances });
+  }
+
+  return Math.max.apply(null, distances);
+}
+
 console.log({ part1: part1(lines) });
+console.log({ part2: part2(lines) });
