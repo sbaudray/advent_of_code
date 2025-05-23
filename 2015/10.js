@@ -33,4 +33,9 @@ function part1() {
   return lookAndSay(input, 40).length;
 }
 
+function part2() {
+  return lookAndSay(input, 50).length;
+}
+
 console.log({ part1: part1() });
+console.log({ part2: part2() });
