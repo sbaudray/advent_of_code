@@ -1,24 +1,19 @@
-import input from './11.input.json' with { type: 'json'};
+import input from "./11.input.json" with { type: "json" };
 
 const letters = "abcdefghijklmnopqrstuvwxyz";
 
 function successor(input) {
   const arr = input.split("");
 
-  let loop = true;
+  mainLoop: while (true) {
+    for (let i = input.length - 1; i >= 0; i -= 1) {
+      const nextIndex = letters.indexOf(arr[i]) + 1;
+      const nextLetter = letters[nextIndex % letters.length]
 
-  while (loop) {
-    for (let i = input.length - 1; i > -1; i -= 1) {
-      const charIndex = letters.indexOf(arr[i]);
-      const nextIndex = charIndex + 1;
-      const wrappedAround = nextIndex === letters.length;
-      const nextCharIndex = wrappedAround ? 0 : nextIndex;
+      arr[i] = nextLetter;
 
-      arr[i] = letters[nextCharIndex];
-
-      if (!wrappedAround) {
-        loop = false;
-        break;
+      if (nextLetter !== 'a') {
+        break mainLoop;
       }
     }
   }
@@ -32,8 +27,8 @@ function threeStraightLetters(input) {
   );
 }
 
-function noForbiddenLetters() {
-  return !/i|o|l/.test(input);
+function forbiddenLetters() {
+  return /i|o|l/.test(input);
 }
 
 function twoDifferentPairs(input) {
@@ -42,7 +37,7 @@ function twoDifferentPairs(input) {
 
 export function isValidPassword(password) {
   return (
-    noForbiddenLetters(password) &&
+    !forbiddenLetters(password) &&
     threeStraightLetters(password) &&
     twoDifferentPairs(password)
   );
@@ -58,4 +53,7 @@ function part1(input) {
   return result;
 }
 
-console.log({ part1: part1(input) });
+const part1Result = part1(input);
+const part2Result = part1(part1Result);
+
+console.log({ part1: part1Result, part2: part2Result });
