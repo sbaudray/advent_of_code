@@ -113,4 +113,21 @@ function part1(lines) {
   return getMaxHappiness({ tables, guestPairToHappinessMap });
 }
 
-console.log({ part1: part1(lines) });
+function part2(lines) {
+  const facts = lines.map(parseFact);
+  const guestSet = makeGuestSet(facts);
+  const guestPairToHappinessMap = mapGuestPairToHappinessAmount(facts);
+
+  for (const guest of guestSet) {
+    guestPairToHappinessMap[["me", guest]] = 0;
+    guestPairToHappinessMap[[guest, "me"]] = 0;
+  }
+
+  guestSet.add("me");
+
+  const tables = makePermutations(Array.from(guestSet));
+
+  return getMaxHappiness({ tables, guestPairToHappinessMap });
+}
+
+console.log({ part1: part1(lines), part2: part2(lines) });
