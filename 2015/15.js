@@ -26,6 +26,8 @@ function parseIngredient(line) {
 
 const TEA_SPOONS = 100;
 
+const INGREDIENTS = lines.map(parseIngredient);
+
 class Batch {
   recipe = new Map();
   teaspoons = 0;
@@ -50,6 +52,7 @@ class Batch {
       durability: 0,
       flavor: 0,
       texture: 0,
+      calories: 0,
     };
 
     for (const [ingredient, quantity] of this.recipe) {
@@ -57,6 +60,7 @@ class Batch {
       batch.durability += ingredient.durability * quantity;
       batch.flavor += ingredient.flavor * quantity;
       batch.texture += ingredient.texture * quantity;
+      batch.calories += ingredient.calories * quantity;
     }
 
     return batch;
@@ -74,6 +78,7 @@ function getBatchScore(batch) {
 
 function cook(
   ingredients,
+  options = {},
   state = { bestScore: 0 },
   currentBatch = new Batch(),
   currentIngredientIndex = 0
@@ -84,6 +89,11 @@ function cook(
     }
 
     const batch = currentBatch.cook();
+
+    if (options.exactCalories && batch.calories !== options.exactCalories) {
+      return;
+    }
+
     const score = getBatchScore(batch);
 
     if (score > state.bestScore) {
@@ -102,7 +112,7 @@ function cook(
   ) {
     currentBatch.addIngredient(currentIngredient, quantity);
 
-    cook(ingredients, state, currentBatch, currentIngredientIndex + 1);
+    cook(ingredients, options, state, currentBatch, currentIngredientIndex + 1);
 
     currentBatch.removeIngredient(currentIngredient);
   }
@@ -110,10 +120,12 @@ function cook(
   return state.bestScore;
 }
 
-function part1(lines) {
-  const ingredients = lines.map(parseIngredient);
-
-  return cook(ingredients);
+function part1() {
+  return cook(INGREDIENTS);
 }
 
-console.log({ part1: part1(lines) });
+function part2() {
+  return cook(INGREDIENTS, { exactCalories: 500 });
+}
+
+console.log({ part1: part1(), part2: part2() });
