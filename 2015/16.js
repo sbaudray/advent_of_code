@@ -35,12 +35,22 @@ const ANALYSIS = {
   perfumes: 1,
 };
 
-function findSue() {
+function findSue({ predicates } = {}) {
   let sue;
 
   auntiesLoop: for (const { id, things } of AUNTIES) {
     for (const [thing, quantity] of things) {
-      if (ANALYSIS[thing] !== quantity) {
+      const predicate = predicates?.[thing];
+      const expected = ANALYSIS[thing];
+
+      let isExpected =
+        predicate === ">"
+          ? quantity > expected
+          : predicate === "<"
+          ? quantity < expected
+          : quantity === expected;
+
+      if (!isExpected) {
         continue auntiesLoop;
       }
     }
@@ -51,4 +61,9 @@ function findSue() {
   return sue ?? -1;
 }
 
-console.log({ part1: findSue() });
+console.log({
+  part1: findSue(),
+  part2: findSue({
+    predicates: { cats: ">", trees: ">", pomeranians: "<", goldfish: "<" },
+  }),
+});
