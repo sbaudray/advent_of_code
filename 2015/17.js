@@ -27,7 +27,7 @@ class Combination {
   }
 }
 
-function combinations({
+function getCombinations({
   currentCombination = new Combination(),
   allCombinations = [],
   currentIndex = 0,
@@ -46,7 +46,7 @@ function combinations({
 
     currentCombination.add(container);
 
-    combinations({
+    getCombinations({
       currentCombination,
       currentIndex: i + 1,
       allCombinations,
@@ -58,4 +58,27 @@ function combinations({
   return allCombinations;
 }
 
-console.log({ part1: combinations().length });
+function amountOfCombinationsWithMinimalAmountOfContainers(combinations) {
+  let minLength = Infinity;
+  let amount = 0;
+
+  for (const combination of combinations) {
+    const length = combination.length;
+
+    if (length < minLength) {
+      minLength = length;
+      amount = 1;
+    } else if (length === minLength) {
+      amount += 1;
+    }
+  }
+
+  return amount;
+}
+
+const combinations = getCombinations();
+
+console.log({
+  part1: combinations.length,
+  part2: amountOfCombinationsWithMinimalAmountOfContainers(combinations),
+});
