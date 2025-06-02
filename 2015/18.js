@@ -1,23 +1,21 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-const input = await fs.readFile(
+const INPUT = await fs.readFile(
   path.join(import.meta.dirname, "./18.input.txt"),
   "utf8"
 );
 
-const lines = input.split("\n");
+const LINES = INPUT.split("\n");
 
 function buildLightGrid() {
-  let grid = {};
+  let grid = [];
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+  for (let i = 0; i < LINES.length; i++) {
+    grid[i] = [];
 
-    for (let j = 0; j < line.length; j++) {
-      let char = line[j];
-
-      grid[[i, j]] = char === "#" ? 1 : 0;
+    for (let j = 0; j < LINES.length; j++) {
+      grid[i][j] = LINES[i][j] === "#" ? 1 : 0;
     }
   }
 
@@ -36,44 +34,55 @@ const neighboursDeltaList = [
 ];
 
 function countNeighboursOn(row, column, grid) {
-  let neighboursOn = 0;
+  let count = 0;
 
   for (const [deltaX, deltaY] of neighboursDeltaList) {
-    const neighbour = grid[[row + deltaX, column + deltaY]];
+    const x = row + deltaX;
+    const y = column + deltaY;
 
-    neighboursOn += neighbour ?? 0;
+    if (x >= 0 && x < grid.length && y >= 0 && y < grid.length) {
+      count += grid[x][y];
+    }
   }
 
-  return neighboursOn;
+  return count;
 }
 
-function animateGrid(grid) {
-  let newGrid = {};
+function animateGrid(grid, cornersAlwaysOn) {
+  let newGrid = Array(grid.length);
 
-  for (const [key, light] of Object.entries(grid)) {
-    const [row, column] = key.split(",");
+  for (let x = 0; x < grid.length; x++) {
+    newGrid[x] = [];
 
-    const neighboursOn = countNeighboursOn(
-      parseInt(row, 10),
-      parseInt(column, 10),
-      grid
-    );
+    for (let y = 0; y < grid.length; y++) {
+      if (
+        cornersAlwaysOn &&
+        (x === 0 || x === grid.length - 1) &&
+        (y === 0 || y === grid.length - 1)
+      ) {
+        newGrid[x][y] = 1;
+        continue;
+      }
 
-    if (light === 1) {
-      newGrid[[row, column]] = neighboursOn === 2 || neighboursOn === 3 ? 1 : 0;
-    } else if (light === 0) {
-      newGrid[[row, column]] = neighboursOn === 3 ? 1 : 0;
+      const neighboursOn = countNeighboursOn(x, y, grid);
+      const light = grid[x][y];
+
+      if (light === 1) {
+        newGrid[x][y] = neighboursOn === 2 || neighboursOn === 3 ? 1 : 0;
+      } else if (light === 0) {
+        newGrid[x][y] = neighboursOn === 3 ? 1 : 0;
+      }
     }
   }
 
   return newGrid;
 }
 
-function runLightGrid(times) {
+function runLightGrid(times, cornersAlwaysOn) {
   let grid = buildLightGrid();
 
   for (let i = 0; i < times; i++) {
-    grid = animateGrid(grid);
+    grid = animateGrid(grid, cornersAlwaysOn);
   }
 
   return grid;
@@ -81,10 +90,17 @@ function runLightGrid(times) {
 
 function countLightsOn(grid) {
   let count = 0;
-  for (const light of Object.values(grid)) {
-    count += light;
+
+  for (const row of grid) {
+    for (const light of row) {
+      count += light;
+    }
   }
+
   return count;
 }
 
-console.log({ part1: countLightsOn(runLightGrid(100)) });
+console.log({
+  part1: countLightsOn(runLightGrid(100)),
+  part2: countLightsOn(runLightGrid(100, true)),
+});
