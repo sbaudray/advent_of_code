@@ -9,6 +9,39 @@ const input = await fs.readFile(
 
 const LINES = input.split("\n");
 
+function make_permutations(
+  list,
+  n = list.length,
+  current_permutation = [],
+  permutations = [],
+  used_elements = new Set()
+) {
+  if (current_permutation.length === n) {
+    permutations.push(current_permutation.slice());
+
+    return permutations;
+  }
+
+  for (let i = 0; i < list.length; i += 1) {
+    const elem = list[i];
+    if (!used_elements.has(elem)) {
+      used_elements.add(elem);
+      current_permutation.push(elem);
+      make_permutations(
+        list,
+        n,
+        current_permutation,
+        permutations,
+        used_elements
+      );
+      current_permutation.pop();
+      used_elements.delete(elem);
+    }
+  }
+
+  return permutations;
+}
+
 function parse_stats(lines) {
   const stats = {};
 
@@ -46,44 +79,21 @@ class Fighter {
     this.gold_spent = 0;
   }
 
-  revive() {
-    this.hp = this.stats.hp;
-  }
-
   attack(enemy) {
     enemy.hp -= Math.max(1, this.atk - enemy.def);
   }
 
   equip(item) {
-    if (item.type === "weapon" && this.items.some((x) => x.type === "weapon")) {
-      return false;
-    }
-
-    if (item.type === "armor" && this.items.some((x) => x.type === "armor")) {
-      return false;
-    }
-
-    if (
-      (item.type === "rings" &&
-        this.items.filter((x) => x.type === "rings").length === 2) ||
-      this.items.some((x) => x === item)
-    ) {
-      return false;
-    }
-
     this.items.push(item);
     this.atk += item.damage;
     this.def += item.armor;
     this.gold_spent += item.cost;
-
-    return true;
   }
 
-  abandon(item) {
-    this.items = this.items.filter((x) => x !== item);
-    this.atk -= item.damage;
-    this.def -= item.armor;
-    this.gold_spent -= item.cost;
+  equip_loadout(loadout) {
+    for (const item of loadout) {
+      this.equip(item);
+    }
   }
 }
 
@@ -98,8 +108,6 @@ function fight(player1, player2) {
     attacker.attack(defender);
 
     if (defender.hp <= 0) {
-      defender.revive();
-      attacker.revive();
       return attacker;
     }
 
@@ -107,35 +115,70 @@ function fight(player1, player2) {
   }
 }
 
-function fight_and_buy(player, boss, shop, winner_costs = new Set()) {
-  const winner = fight(player, boss);
+function make_loadouts(shop) {
+  let loadouts = [];
 
-  if (winner === player) {
-    winner_costs.add(winner.gold_spent);
-  }
+  let weapons = shop.filter((x) => x.type === "weapon");
+  let rings = shop.filter((x) => x.type === "rings");
+  let armors = shop.filter((x) => x.type === "armor");
 
-  for (const item of shop) {
-    const equipped = player.equip(item);
+  const rings_combinations = [
+    [],
+    ...rings.map((ring) => [ring]),
+    ...make_permutations(rings, 2),
+  ];
 
-    if (!equipped) {
-      continue;
+  for (const weapon of weapons) {
+    for (const armor of [null, ...armors]) {
+      for (const rings of rings_combinations) {
+        let loadout = [];
+
+        loadout.push(weapon);
+
+        armor ? loadout.push(armor) : void 0;
+
+        loadout.push(...rings);
+
+        loadouts.push(loadout);
+      }
     }
-
-    fight_and_buy(player, boss, shop, winner_costs);
-
-    player.abandon(item);
   }
 
-  return winner_costs;
+  return loadouts;
 }
 
-function minimum_gold_spent_to_win() {
-  const boss = new Fighter("Boss", BOSS_STATS);
-  const player = new Fighter("Player", { hp: 100, atk: 0, def: 0 });
+function get_fight_costs() {
+  const loadouts = make_loadouts(SHOP);
 
-  const winner_costs = fight_and_buy(player, boss, SHOP);
+  let costs = {
+    winning_fights: new Set(),
+    losing_fights: new Set(),
+  };
 
-  return Math.min(...winner_costs);
+  for (const loadout of loadouts) {
+    const boss = new Fighter("Boss", BOSS_STATS);
+    const player = new Fighter("Player", {
+      hp: 100,
+      atk: 0,
+      def: 0,
+    });
+
+    player.equip_loadout(loadout);
+
+    const winner = fight(player, boss);
+
+    if (winner === player) {
+      costs.winning_fights.add(player.gold_spent);
+    } else {
+      costs.losing_fights.add(player.gold_spent);
+    }
+  }
+
+  return {
+    minimum_to_win: Math.min(...costs.winning_fights),
+    maximum_to_lose: Math.max(...costs.losing_fights),
+  };
 }
 
-console.log({ part1: minimum_gold_spent_to_win() });
+console.log({ part1: get_fight_costs().minimum_to_win });
+console.log({ part2: get_fight_costs().maximum_to_lose });
