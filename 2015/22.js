@@ -32,84 +32,172 @@ function parseStats(lines) {
 
 const BOSS_STATS = parseStats(lines);
 
-console.log(BOSS_STATS);
-
 class Fighter {
   spells = new Map();
+  effects = new Map();
+  cleanups = [];
 
   constructor(stats) {
     const { hp, atk, mana } = stats;
 
+    this.initialStats = stats;
     this.hp = hp;
     this.atk = atk;
+    this.armor = 0;
     this.mana = mana;
+    this.manaSpent = 0;
+  }
+
+  clone() {
+    const clone = new Fighter(this.initialStats);
+    clone.hp = this.hp;
+    clone.atk = this.atk;
+    clone.armor = this.armor;
+    clone.mana = this.mana;
+    clone.manaSpent = this.manaSpent;
+    clone.spells = this.spells;
+    const effects = new Map();
+    for (const [name, effect] of this.effects) {
+      effects.set(name, Object.assign({}, effect));
+    }
+    clone.effects = effects;
+    clone.cleanups = this.cleanups.slice();
+
+    return clone;
   }
 
   learnSpell(spell) {
-    this.spells.set(spell.name, {
-      effects: spell.effects,
-      manaCost: spell.manaCost,
-    });
+    this.spells.set(spell.name, spell);
   }
 
-  castSpell(name) {
-    const spell = this.spells.get(name);
+  canCast(spell) {
+    return this.mana >= spell.manaCost;
+  }
 
-    if (!spell) {
-      throw new Error("Wrong spell");
-    }
+  cast(spellName, enemy) {
+    const spell = this.spells.get(spellName);
 
     if (spell.manaCost > this.mana) {
-      console.log(`no mana`);
-      return false;
+      return { error: "NO_MANA" };
+    }
+
+    if (this.effects.has(spellName)) {
+      return { error: "EFFECT_RUNNING" };
     }
 
     this.mana -= spell.manaCost;
+    this.manaSpent += spell.manaCost;
 
-    for (const effect of spell.effects) {
-      this.playEffect(effect);
+    if (spell.actions) {
+      this.runActions(spell.actions, enemy);
+    }
+
+    if (spell.effect) {
+      this.effects.set(spellName, structuredClone(spell.effect));
     }
   }
 
-  playEffect(effect) {
-    if (effect.turns === 0) {
-      this.instantCast(effect);
-      return;
+  runActions(actions, enemy) {
+    for (const action of actions) {
+      switch (action.type) {
+        case "damage":
+          enemy.takeDamage(action.amount);
+          break;
+        case "self_heal":
+          const healthPoints = this.hp + action.amount;
+          this.hp = Math.min(healthPoints, this.initialStats.hp);
+          break;
+        default:
+          throw Error(`Cannot run action ${JSON.stringify(action)}`);
+      }
     }
   }
 
-  instantCast(effect) {
-    switch (effect.type) {
-      case "damge":
-        console.log(`Instant damage enemy for ${effect.amount}`);
-        break;
-      case "self_heal":
-        console.log(`Instant self heal for ${effect.amount}`);
-        break;
-      default:
-        throw Error(`Cannot instantCast ${JSON.stringify(effect)}`);
+  startOfTurn(enemy) {
+    while (this.cleanups.length) {
+      const cleanup = this.cleanups.pop();
+      cleanup();
     }
+
+    for (const [name, effect] of this.effects) {
+      if (!effect.consumed) {
+        switch (effect.type) {
+          case "armor_gain":
+            this.armor += effect.amount;
+            effect.consumed = true;
+            effect.cleanup = () => (this.armor -= effect.amount);
+            break;
+          case "mana_gain":
+            this.mana += effect.amount;
+            break;
+          case "damage":
+            enemy.takeDamage(effect.amount);
+            break;
+          default:
+            throw new Error(`Cannot run effect `);
+        }
+      }
+
+      effect.turns = Math.max(0, effect.turns - 1);
+
+      if (effect.turns === 0) {
+        if (effect.cleanup) {
+          this.cleanups.push(effect.cleanup);
+        }
+
+        this.effects.delete(name);
+      }
+    }
+  }
+
+  takeDamage(amount) {
+    this.hp -= Math.max(1, amount - this.armor);
   }
 }
-const foo = Error("mesage");
-const bar = new Error("mesage");
 
-const boss = new Fighter({ hp: BOSS_STATS.hp, atk: BOSS_STATS.atk });
-const wizard = new Fighter({ hp: 50, mana: 500 });
+function simulateFights(wizard, boss, result = { minManaSpent: Infinity }) {
+  if (boss.hp <= 0) {
+    if (wizard.manaSpent < result.minManaSpent) {
+      result.minManaSpent = wizard.manaSpent;
+    }
 
-for (const spell of SPELLS) {
-  wizard.learnSpell(spell);
+    return;
+  }
+
+  if (wizard.manaSpent > result.minManaSpent || wizard.hp <= 0) {
+    return;
+  }
+
+  for (const spell of SPELLS) {
+    const wizardClone = wizard.clone();
+    const bossClone = boss.clone();
+
+    if (!wizardClone.canCast(spell)) {
+      continue;
+    }
+
+    wizardClone.startOfTurn(bossClone);
+    wizardClone.cast(spell.name, bossClone);
+    wizardClone.startOfTurn(bossClone);
+    wizardClone.takeDamage(boss.atk);
+
+    simulateFights(wizardClone, bossClone, result);
+  }
+
+  return result.minManaSpent;
 }
 
-console.log(wizard);
-wizard.castSpell("magic_missile");
-wizard.castSpell("magic_missile");
-wizard.castSpell("magic_missile");
-wizard.castSpell("magic_missile");
-wizard.castSpell("magic_missile");
-wizard.castSpell("magic_missile");
-wizard.castSpell("magic_missile");
-wizard.castSpell("magic_missile");
-wizard.castSpell("magic_missile");
-wizard.castSpell("magic_missile");
-wizard.castSpell("magic_missile");
+function findLeastManaSpentToWin() {
+  const boss = new Fighter({ hp: BOSS_STATS.hp, atk: BOSS_STATS.atk });
+  const wizard = new Fighter({ hp: 50, mana: 500 });
+
+  for (const spell of SPELLS) {
+    wizard.learnSpell(spell);
+  }
+
+  const leastManaSpent = simulateFights(wizard, boss);
+
+  return leastManaSpent;
+}
+
+console.log({ part1: findLeastManaSpentToWin() });
