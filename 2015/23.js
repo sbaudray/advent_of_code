@@ -31,11 +31,11 @@ function parseInstruction(line) {
 
 const INSTRUCTIONS = lines.map(parseInstruction);
 
-function getRegister() {
+function getRegister(initialValues = {}) {
   let register = new Map();
 
-  register.set("a", 0);
-  register.set("b", 0);
+  register.set("a", initialValues.a ?? 0);
+  register.set("b", initialValues.b ?? 0);
 
   let i = 0;
 
@@ -93,4 +93,4 @@ function getRegister() {
   return register;
 }
 
-console.log(getRegister());
+console.log(getRegister(), getRegister({ a: 1 }));
