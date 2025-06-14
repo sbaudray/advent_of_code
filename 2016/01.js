@@ -7,11 +7,28 @@ const directions = {
   WEST: "west",
 };
 
-let row = 0;
-let column = 0;
+let position = { row: 0, column: 0 };
 let facing = directions.NORTH;
 
-const instructions = INPUT.split(" ").map((str) => str.trim().replace(",", ""));
+const instructions = INPUT.split(", ");
+
+let visited = new Set();
+visited.add([position.row, position.column].toString());
+let firstPositionVisitedTwice;
+
+function registerMove(axis, amount, sign) {
+  for (let i = 0; i < amount; i++) {
+    position[axis] += sign;
+
+    const key = [position.row, position.column].toString();
+
+    if (visited.has(key) && !firstPositionVisitedTwice) {
+      firstPositionVisitedTwice = Object.assign({}, position);
+    }
+
+    visited.add(key);
+  }
+}
 
 for (let i = 0; i < instructions.length; i++) {
   let instruction = instructions[i];
@@ -21,25 +38,25 @@ for (let i = 0; i < instructions.length; i++) {
   switch (direction) {
     case "L": {
       if (facing === directions.NORTH) {
-        column -= amount;
+        registerMove("column", amount, -1);
         facing = directions.WEST;
         break;
       }
 
       if (facing === directions.WEST) {
-        row -= amount;
+        registerMove("row", amount, -1);
         facing = directions.SOUTH;
         break;
       }
 
       if (facing === directions.SOUTH) {
-        column += amount;
+        registerMove("column", amount, +1);
         facing = directions.EAST;
         break;
       }
 
       if (facing === directions.EAST) {
-        row += amount;
+        registerMove("row", amount, +1);
         facing = directions.NORTH;
         break;
       }
@@ -47,25 +64,25 @@ for (let i = 0; i < instructions.length; i++) {
 
     case "R": {
       if (facing === directions.NORTH) {
-        column += amount;
+        registerMove("column", amount, +1);
         facing = directions.EAST;
         break;
       }
 
       if (facing === directions.WEST) {
-        row += amount;
+        registerMove("row", amount, +1);
         facing = directions.NORTH;
         break;
       }
 
       if (facing === directions.SOUTH) {
-        column -= amount;
+        registerMove("column", amount, -1);
         facing = directions.WEST;
         break;
       }
 
       if (facing === directions.EAST) {
-        row -= amount;
+        registerMove("row", amount, -1);
         facing = directions.SOUTH;
         break;
       }
@@ -76,6 +93,9 @@ for (let i = 0; i < instructions.length; i++) {
   }
 }
 
-const result = Math.abs(column) + Math.abs(row);
+const part1 = Math.abs(position.row) + Math.abs(position.column);
+const part2 =
+  Math.abs(firstPositionVisitedTwice.row) +
+  Math.abs(firstPositionVisitedTwice.column);
 
-console.log({ part1: result });
+console.log({ part1, part2 });
