@@ -8,7 +8,7 @@ const input = await fs.readFile(
 
 const lines = input.split("\n");
 
-const PACKS = lines.map((line) => parseInt(line, 10)).sort((a, b) => b - a);
+const WEIGHTS = lines.map((line) => parseInt(line, 10)).sort((a, b) => b - a);
 
 function* combinations(targetSize, list, start = 0, current = []) {
   if (current.length === targetSize) {
@@ -21,39 +21,74 @@ function* combinations(targetSize, list, start = 0, current = []) {
   }
 }
 
-function canPartition(targetWeight, remaining) {
-  for (let size = 1; size < remaining.length - 1; size++) {
-    for (const group of combinations(size, remaining)) {
-      const weight = group.reduce((sum, value) => sum + value);
+function canPartition(targetWeight, weights, numOfGroups) {
+  if (numOfGroups === 0) {
+    return true;
+  }
 
-      if (weight === targetWeight) {
-        return true;
+  if (weights.length === 0) {
+    return false;
+  }
+
+  function buildGroup(index, currentGroup, currentSum) {
+    if (currentSum === targetWeight) {
+      return currentGroup;
+    }
+
+    if (currentSum > targetWeight || index > weights.length) {
+      return;
+    }
+
+    for (let i = 0; i < weights.length; i++) {
+      const currentWeight = weights[i];
+      currentGroup.push(currentWeight);
+
+      const result = buildGroup(
+        index + 1,
+        currentGroup,
+        currentSum + currentWeight
+      );
+
+      if (result) {
+        return result;
       }
+
+      currentGroup.pop();
     }
   }
 
-  return false;
+  const group = buildGroup(0, [], 0);
+
+  if (!group) {
+    return false;
+  }
+
+  const remainingWeights = weights.filter((weight) => !group.includes(weight));
+
+  return canPartition(targetWeight, remainingWeights, numOfGroups - 1);
 }
 
-function smallest() {
-  const total = PACKS.reduce((sum, value) => sum + value);
-  const targetWeight = total / 3;
+function findSmallestQuantumEntanglement({ numOfGroups }) {
+  const totalWeight = WEIGHTS.reduce((sum, value) => sum + value);
+  const targetWeight = totalWeight / numOfGroups;
 
   let smallestQuantumEntanglement = Infinity;
 
-  for (let size = 1; size < PACKS.length; size++) {
+  for (let size = 1; size < WEIGHTS.length - numOfGroups + 1; size++) {
     let foundValidGroup = false;
 
-    for (const group of combinations(size, PACKS)) {
+    for (const group of combinations(size, WEIGHTS)) {
       const weight = group.reduce((sum, value) => sum + value);
 
       if (weight !== targetWeight) {
         continue;
       }
 
-      const remaining = PACKS.filter((pack) => !group.includes(pack));
+      const remainingWeights = WEIGHTS.filter(
+        (weight) => !group.includes(weight)
+      );
 
-      if (canPartition(targetWeight, remaining)) {
+      if (canPartition(targetWeight, remainingWeights, numOfGroups - 1)) {
         foundValidGroup = true;
 
         const quantumEntanglement = group.reduce(
@@ -74,4 +109,7 @@ function smallest() {
   return smallestQuantumEntanglement;
 }
 
-console.log({ part1: smallest() });
+console.log({
+  part1: findSmallestQuantumEntanglement({ numOfGroups: 3 }),
+  part2: findSmallestQuantumEntanglement({ numOfGroups: 4 }),
+});
