@@ -8,40 +8,68 @@ const input = await fs.readFile(
 
 const INSTRUCTIONS = input.split("\n");
 
-const KEYPAD = [
-  [1, 2, 3],
-  [4, 5, 6],
-  [7, 8, 9],
-];
+function findCode(keypad) {
+  let row;
+  let column;
 
-let row = 1;
-let column = 1;
-
-let code = "";
-
-for (let i = 0; i < INSTRUCTIONS.length; i++) {
-  for (const char of INSTRUCTIONS[i]) {
-    switch (char) {
-      case "L": {
-        column = column - 1 >= 0 ? column - 1 : column;
-        break;
-      }
-      case "R": {
-        column = column + 1 < KEYPAD[row].length ? column + 1 : column;
-        break;
-      }
-      case "U": {
-        row = row - 1 >= 0 ? row - 1 : row;
-        break;
-      }
-      case "D": {
-        row = row + 1 < KEYPAD.length ? row + 1 : row;
-        break;
+  for (let i = 0; i < keypad.length; i++) {
+    for (let j = 0; j < keypad[i].length; j++) {
+      if (keypad[i][j] === 5) {
+        row = i;
+        column = j;
       }
     }
   }
 
-  code += KEYPAD[row][column];
+  let code = "";
+
+  for (let i = 0; i < INSTRUCTIONS.length; i++) {
+    for (const char of INSTRUCTIONS[i]) {
+      switch (char) {
+        case "L": {
+          if (keypad[row]?.[column - 1]) {
+            column -= 1;
+          }
+          break;
+        }
+        case "R": {
+          if (keypad[row]?.[column + 1]) {
+            column = column += 1;
+          }
+          break;
+        }
+        case "U": {
+          if (keypad[row - 1]?.[column]) {
+            row -= 1;
+          }
+          break;
+        }
+        case "D": {
+          if (keypad[row + 1]?.[column]) {
+            row += 1;
+          }
+          break;
+        }
+      }
+    }
+
+    code += keypad[row][column];
+  }
+
+  return code;
 }
 
-console.log({ code });
+console.log({
+  part1: findCode([
+    [1, 2, 3],
+    [4, 5, 6],
+    [7, 8, 9],
+  ]),
+  part2: findCode([
+    [, , 1, ,],
+    [, 2, 3, 4],
+    [5, 6, 7, 8, 9],
+    [, "A", "B", "C"],
+    [, , "D", ,],
+  ]),
+});
