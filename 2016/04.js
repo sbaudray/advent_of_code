@@ -10,28 +10,44 @@ const lines = input.split("\n");
 
 const roomRegex = /(?<name>.*)-(?<sectorId>\d+)\[(?<checksum>[a-z]+)\]/;
 
-let sum = 0;
+const alphabet = "abcdefghijklmnopqrstuvwxyz";
 
-for (const line of lines) {
-  const {
-    groups: { name, sectorId, checksum },
-  } = line.match(roomRegex);
+function rotate(char, times) {
+  const nextIndex = (alphabet.indexOf(char) + times) % alphabet.length;
+  return alphabet[nextIndex];
+}
 
-  const map = new Map();
+function decode(name, sectorId) {
+  let decoded = "";
+
+  for (const char of name) {
+    if (char === "-") {
+      decoded += " ";
+      continue;
+    }
+
+    decoded += rotate(char, parseInt(sectorId, 10));
+  }
+
+  return decoded;
+}
+
+function isValidChecksum(name, checksum) {
+  const charCountMap = new Map();
 
   for (const char of name) {
     if (char === "-") {
       continue;
     }
 
-    if (map.has(char)) {
-      map.set(char, map.get(char) + 1);
+    if (charCountMap.has(char)) {
+      charCountMap.set(char, charCountMap.get(char) + 1);
     } else {
-      map.set(char, 1);
+      charCountMap.set(char, 1);
     }
   }
 
-  const sorted = [...map].sort(([charA, countA], [charB, countB]) => {
+  const sorted = [...charCountMap].sort(([charA, countA], [charB, countB]) => {
     if (countA === countB) {
       return charA > charB ? 1 : -1;
     }
@@ -45,8 +61,29 @@ for (const line of lines) {
     .join("");
 
   if (checksum === fiveMostCommonLetters) {
-    sum += parseInt(sectorId, 10);
+    return true;
+  }
+
+  return false;
+}
+
+let sectorIdSum = 0;
+let northpoleObjectStorageSectorId;
+
+for (const line of lines) {
+  const {
+    groups: { name, sectorId, checksum },
+  } = line.match(roomRegex);
+
+  const decoded = decode(name, sectorId);
+
+  if (decoded.includes("northpole") && decoded.includes("storage")) {
+    northpoleObjectStorageSectorId = parseInt(sectorId, 10);
+  }
+
+  if (isValidChecksum(name, checksum)) {
+    sectorIdSum += parseInt(sectorId, 10);
   }
 }
 
-console.log({ sum });
+console.log({ sectorIdSum, northpoleObjectStorageSectorId });
