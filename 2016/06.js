@@ -16,12 +16,7 @@ for (const line of lines) {
     const char = line[i];
     const map = charFrequencyMaps[i];
 
-    if (!map.has(char)) {
-      map.set(char, 1);
-      continue;
-    }
-
-    const newCount = map.get(char) + 1;
+    const newCount = map.has(char) ? map.get(char) + 1 : 1;
 
     map.set(char, newCount);
 
@@ -34,6 +29,22 @@ for (const line of lines) {
   }
 }
 
-const corrected = maxes.map((x) => x.char).join("");
+const corrected1 = maxes.map((x) => x.char).join("");
 
-console.log({ corrected });
+let corrected2 = "";
+
+for (const map of charFrequencyMaps) {
+  let minCount = Infinity;
+  let minChar;
+
+  for (const [char, count] of map) {
+    if (count < minCount) {
+      minCount = count;
+      minChar = char;
+    }
+  }
+
+  corrected2 += minChar;
+}
+
+console.log({ corrected1, corrected2 });
